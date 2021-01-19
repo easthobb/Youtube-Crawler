@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>facebook crawler</title>
+</head>
+
+<style>
+	h1
+	{
+		text-align: center;
+	}
+	form
+	{
+	 	text-align: center;
+	}
+
+</style>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+
+<body>
+	<div class="w3-container w3-display-middle">
+		<div class="w3-panel w3-card" style="height: 400px;">
+			<h1>Youtube Channel Crawler</h1><br><br>
+			<form id="input-form" method="post" action="/youtube-crawling"> 
+				<input type="text" name="url" style="width: 300px;" placeholder="page URL,ex)facebook.com/datamktkorea"/><br><br>
+				<button type="submit" class="btn btn-secondary">Run</button>
+				<button type="button" class="btn btn-secondary" onclick="location.href='/fb-login'">Refresh</button>
+
+			</form>
+				
+				
+			
+		</div>
+	</div>
+
+</body>
+</html>
