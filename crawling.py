@@ -10,13 +10,13 @@ class Youtube_Crawler(object):
         print("Crawler initiating...")
 
         # set API's base URL 
-        self.BASE_URL = "https://youtube.googleapis.com/youtube/v3/"
+        self.BASE_URL = 
 
         # Attributes of Crawler
-        self.token = "" # temp API key
+        self.token = "AIzaSyBJT8Cq5kW4WMmgcRcg0e4W0rmN6UBiCjw" # temp API key
         self.channel_name = ""
         self.channel_id = channel_id  # input parameter
-        self._max_result = 10  # temp
+        self._max_result = 50  # temp
 
         # Attributes for channel info crawling
         
@@ -120,6 +120,7 @@ class Youtube_Crawler(object):
             if 'nextPageToken' in response.json():
                 next_page_token = response.json()['nextPageToken']
             else:
+                print("activity! page end")
                 next_page_token = None
         except:
             print("request activity: something go wrong")
@@ -139,23 +140,26 @@ class Youtube_Crawler(object):
                 pass
         print(self.videos_id_list)
         
+    # video_id를 종합해 URL 형태로 만드는 함수 - maxing에 의존하지 않음
+    # input: videos_id_list, return URL
+    def create_videos_URL(self,videos_id_list):
+        #https://youtube.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=nV8eAWmVEk4,XyN-LascAL0&fields=items(statistics,snippet.title)
+        #video_info_list : [[video_id, channelId, title, discription, upload_date, viewCount, likeCount,  commentCount, thumbnail_URL, video_URL],...]
+        #max list = 50 
+        URL = self.BASE_URL +f"videos?part=snippet,contentDetails,statistics&id="
+        URL = URL + ",".join(videos_id_list)
+        URL = URL + f"&key={self.token}"
 
-
-
-    # 채널 정보가 담긴 list를 csv로 변환하는 함수
-    def convert_channel_to_csv(self,channel_info_list,video_id_list):
-        pass
-
-    # video_id를 종합해 URL 형태로 만드는 함수
-    #
-    def create_videos_URL(self):
-        pass
-
+        return URL
 
     # 입력받은 URL을 요청하는 함수
-    #
-    def request_video_URL(self):
-        pass
+    # input : URL , return response(json)
+    def request_video_URL(self,URL):
+        try:
+            response = requests.get(URL)
+            return response
+        except:
+            print("request_video_URL : something go wrong!")
 
 
 
@@ -187,11 +191,18 @@ class Youtube_Crawler(object):
         self.parse_activity_json(activity_response)
         print("next page: ",next_page_token)
         while True:
-            if (next_page_token!=None) and (len(self.videos_id_list)<=100) :
+            
+            if (next_page_token!=None) and (len(self.videos_id_list)<=101) :
                 print("next page requesting...")
-                activity_URL =activity_URL+ "&nextPageToken=" + next_page_token
+                print("next page :", next_page_token)
+                print("next URL : ",activity_URL)
+                temp = activity_URL + "&pageToken=" + next_page_token
+                print(temp)
+                activity_response, next_page_token =self.request_activity_URL(activity_URL + "&pageToken=" + next_page_token)
+                self.parse_activity_json(activity_response)
 
             else:
+                print("page end!")
                 break
 
         print(activity_URL)
