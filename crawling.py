@@ -10,10 +10,10 @@ class Youtube_Crawler(object):
         print("Crawler initiating...")
 
         # set API's base URL 
-        self.BASE_URL = 
+        self.BASE_URL = "https://youtube.googleapis.com/youtube/v3/"
 
         # Attributes of Crawler
-        self.token = "AIzaSyBJT8Cq5kW4WMmgcRcg0e4W0rmN6UBiCjw" # temp API key
+        self.token =  # temp API key
         self.channel_name = ""
         self.channel_id = channel_id  # input parameter
         self._max_result = 50  # temp
