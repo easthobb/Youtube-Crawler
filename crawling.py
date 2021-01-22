@@ -13,19 +13,17 @@ class Youtube_Crawler(object):
         self.BASE_URL = "https://youtube.googleapis.com/youtube/v3/"
 
         # Attributes of Crawler
-        self.token =  # temp API key
+        self.token =   # temp API key
         self.channel_name = ""
         self.channel_id = channel_id  # input parameter
         self._max_result = 50  # temp
 
         # Attributes for channel info crawling
         
-        self.channel_info_list = [] #[channel_name, channel_description, channel_subscriberCount]
-
+        self.channel_info_list = [] #[channel_id, channel_name, channel_description, channel_subscriberCount]
+        
         # Attributes for Activity info Crawling
-        self.videos_id_list = []
-        self.videos_URL_list = []
-
+        self.videos_id_list = [] 
 
         # Attributes for videos crawling
         self.video_info_list = []
@@ -62,11 +60,11 @@ class Youtube_Crawler(object):
         
         print("creating channel info request URL ...")
         URL = self.BASE_URL + f"channels?part=snippet,contentDetails,statistics&id={channel_id}"
-        URL = URL + f"&fields=items(snippet.title,snippet.description,statistics.subscriberCount)"
+        URL = URL + f"&fields=items(id,snippet.title,snippet.description,statistics.subscriberCount)"
         URL = URL + f"&key={self.token}"
         print(URL) # for debug
         return URL
-    
+
     
     # 입력받은 URL 을 요청하는 함수
     # input : URL , return json
@@ -86,19 +84,18 @@ class Youtube_Crawler(object):
     
         response = channel_json.json() #response로 json 변환 to dict 
         if 'items' in response:
+            self.channel_info_list.append(response['items'][0]['id'])
             self.channel_info_list.append(response['items'][0]['snippet']['title'])
-            self.channel_info_list.append(response['items'][0]['snippet']['description'])
             if 'subscriberCount' in response['items'][0]['statistics']: # in case of NULL Count
                 self.channel_info_list.append(response['items'][0]['statistics']['subscriberCount'])
             else:
                 self.channel_info_list.append("0")
-            print(response)
+            self.channel_info_list.append(response['items'][0]['snippet']['description'])
             print(self.channel_info_list)
         else:
             print('wrong response')
 
 
-    #activities?part=snippet,contentDetails&channelId=UCsU-I-vHLiaMfV_ceaYz5rQ&maxResults=5&pageToken=CAUQAA
     # channel_id를 parameter로 채널 활동을 요청위한 URL 생성함수
     # input: channel_id ,return URL
     def create_activity_URL(self,channel_id):
@@ -128,7 +125,6 @@ class Youtube_Crawler(object):
         return response, next_page_token 
         
        
-
     # 채널 활동 정보에 대해 입력받은 json을 발라내는 함수(attributes 중 videos_id_list에 저장 )
     # input: json output None
     def parse_activity_json(self,activity_json):
@@ -162,16 +158,43 @@ class Youtube_Crawler(object):
             print("request_video_URL : something go wrong!")
 
 
-
     # 응답으로 받은 json에서 필요한 정보를 발라내는 함수
+    # input json output None
     def parse_videos_json(self,video_json):
+        
+        json=video_json.json() 
+        for video in json['items']:
+            try:
+                video_id = video['id']
+                title = video['snippet']['title']
+                channel_id = video['snippet']['channelId']
+                pub_time =video['snippet']['publishedAt']
+                description = video['snippet']['description']
+                views = video['statistics']['viewCount']
+                likes = video['statistics']['likeCount']
+                comments = video['statistics']['commentCount']
+                thumbnail_URL = video['snippet']['thumbnails']['default']['url']
+                video_URL = "https://www.youtube.com/watch?v=" + video_id
+                video_info = [video_id,title,channel_id,pub_time,description,views,likes,comments,thumbnail_URL,video_URL]
+                self.video_info_list.append(video_info)
+            except:
+                print(video," is can't parse")
+    
+    # 채널정보 : channel_info_list 를 DB에서 관리하는 메소드
+    # input None, output None (channel_info_list에 의존적)
+    def db_manage_channel_info(self):
         pass
 
-
-
-    # 응답으로 받은 json에서
-    def convert_videos_to_csv(self,video_info_list):
+    # 채널업로드정보  : video_info_list 중 일부를 DB에서 관리하는 메소드
+    # input None, output None (video_info_list에 의존적)
+    def db_manage_channel_upload(self):
         pass
+    
+    # 비디오정보 : video_info_list 중 일부를 DB에서 관리하는 메소드
+    # input None, output None(video_info_list
+    def db_manage_monthly_upload(self):
+        pass
+
 
     
     def start(self):
@@ -184,6 +207,7 @@ class Youtube_Crawler(object):
         channel_URL = self.create_channel_URL(self.channel_id)
         channel_json = self.request_channel_URL(channel_URL)
         self.parse_channel_json(channel_json)
+        print("channel info :",self.channel_info_list)
 
         # channel activity get sequence
         activity_URL = self.create_activity_URL(self.channel_id)
@@ -204,12 +228,22 @@ class Youtube_Crawler(object):
             else:
                 print("page end!")
                 break
+        
 
-        print(activity_URL)
+        ## video info get sequence - done
+        for i in range(0,len(self.videos_id_list),self._max_result): ## 멕스 리절트 인자만큼 아이디 쿼리 날림
+            video_URL = self.create_videos_URL(self.videos_id_list[i:i+self._max_result])#인덱싱해서 URL 따로날림
+            video_json = self.request_video_URL(video_URL) #URL request
+            self.parse_videos_json(video_json) # 해당하는 갯수만큼 json 발라냄
+            
+        for video_info in self.video_info_list:
+            pass#print(video_info)
+        
+        ## DB managing
 
         
-        
-        
+
+           
 if __name__ == "__main__":
     channel_id = input()
     crawler = Youtube_Crawler(channel_id)
