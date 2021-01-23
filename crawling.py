@@ -13,7 +13,7 @@ class Youtube_Crawler(object):
         self.BASE_URL = "https://youtube.googleapis.com/youtube/v3/"
 
         # Attributes of Crawler
-        self.token =   # temp API key
+        self.token = "tttttt" # temp API key
         self.channel_name = ""
         self.channel_id = channel_id  # input parameter
         self._max_result = 50  # temp
