@@ -13,7 +13,7 @@ class Youtube_Crawler(object):
         self.BASE_URL = "https://youtube.googleapis.com/youtube/v3/"
 
         # Attributes of Crawler
-        self.token = "tttttt" # temp API key
+        self.token = "" # temp API key
         self.channel_name = ""
         self.channel_id = channel_id  # input parameter
         self._max_result = 50  # temp
@@ -237,7 +237,7 @@ class Youtube_Crawler(object):
             self.parse_videos_json(video_json) # 해당하는 갯수만큼 json 발라냄
             
         for video_info in self.video_info_list:
-            pass#print(video_info)
+            print(video_info)
         
         ## DB managing
 
