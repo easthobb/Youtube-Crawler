@@ -2,7 +2,7 @@ import requests
 import os
 import json
 import csv
-
+import sqlite3
 
 class Youtube_Crawler(object):
 
@@ -35,6 +35,7 @@ class Youtube_Crawler(object):
     @max_result.setter
     def max_result(self, value):
         self._max_result = value
+    @pro
 
     # 클래스에서 입력받은 채널 id의 유효성 검사
     # input channel_name, return channel_id or -1
@@ -106,7 +107,7 @@ class Youtube_Crawler(object):
         print(URL)
         return URL
 
-    # 입력받은 URL을 요청하는 함수
+    # 입력받은 URL을 요청하는 함수 # 추가 마지막 컨텐츠의 게시 시간까지, #APIbug
     # input : URL,return json 
     def request_activity_URL(self,URL):
         try:
@@ -183,17 +184,165 @@ class Youtube_Crawler(object):
     # 채널정보 : channel_info_list 를 DB에서 관리하는 메소드
     # input None, output None (channel_info_list에 의존적)
     def db_manage_channel_info(self):
-        pass
+        c_list=self.channel_info_list
+        channel_id = c_list[0]
+        channel_name = c_list[1]
+        subscribe_count = int(c_list[2])
+        channel_description = c_list[3]
+
+        try:
+            # DB connect
+            conn = sqlite3.connect('crawler.db')
+            cur = conn.cursor()
+            print("connect")
+
+            # DB 조회
+            cur.execute(f"SELECT channel_id from channel_info;")
+            db_list = cur.fetchall()
+            db_channel_id_list = []
+            for element in list(map(list, db_list)):
+                db_channel_id_list.append(element[0])
+            print("show")
+
+            # DB 기등록된 채널
+            if channel_id in db_channel_id_list:
+                cur.execute(
+                    f"update channel_info set channel_name = \"{channel_name}\", subscribe_count={subscribe_count}, channel_description=\"{channel_description}\" where channel_id = \"{channel_id}\";")
+            else:
+                cur.execute("INSERT INTO channel_info VALUES(?,?,?,?)", c_list)
+
+            conn.commit()
+            conn.close()
+            print("done")
+        except:
+            conn.commit()
+            conn.close()
+            print("error")
+
+        print(db_channel_id_list)
 
     # 채널업로드정보  : video_info_list 중 일부를 DB에서 관리하는 메소드
     # input None, output None (video_info_list에 의존적)
     def db_manage_channel_upload(self):
-        pass
+        
+        video_info_list=self.video_info_list #멤버 리스트 할당
+
+        try:
+            # DB connect
+            conn = sqlite3.connect('crawler.db')
+            cur = conn.cursor()
+            print("DB connect...")
+
+            # 테이블에 존재하는 video_id 한번에 받아옴
+            cur.execute("SELECT video_id from channel_upload;")
+            db_list = cur.fetchall()
+            db_video_id_list = []
+            for element in list(map(list, db_list)):  # 튜플의 리스트 -> 리스트로
+                db_video_id_list.append(element[0])
+            print("GET channel_upload ...")
+
+            # 개별 video에 대해 반복 조회 -> 삽입 업데이트 분기
+            for video_info in video_info_list:
+
+                # 개별 video의 영상 정보 매핑
+                video_id = video_info[0]  # 조회를 위한 video_id : KEY
+                channel_id = video_info[2]  # 채널아이디
+                pub_time = video_info[3]  # 영상업로드시간
+                description = video_info[4].replace('"','').replace('@','')  # 영상설명
+                thumbnail_URL = video_info[8]  # 영상 썸네일 url
+                video_URL = video_info[9]  # 영상 시청 url
+
+                if video_id in db_video_id_list:
+                    # update - 채널 id & 영상 id 안바꿈
+                    cur.execute(f'''
+                    update channel_upload set 
+                    pub_time = "{pub_time}",
+                    description = "{description}",
+                    thumbnail_URL = "{thumbnail_URL}",
+                    video_URL = "{video_URL}"
+                    where video_id = "{video_id}";
+                    ''')
+                    print(video_id, "is updated")
+
+                else:
+                    print("pass")
+                    # insert - 모두 새로 삽입
+                    cur.execute(f'''
+                    insert into channel_upload values("{video_id}","{channel_id}","{pub_time}","{description}","{thumbnail_URL}","{video_URL}");''')
+                    print("pass")
+                    print(video_id, "is inserted")
+            
+            conn.commit()
+            conn.close()
+            print("done")
+
+        except Exception as e:
+            conn.commit()
+            conn.close()
+
+            print(video_id,description)
+            print(e)
+            print("error")
     
     # 비디오정보 : video_info_list 중 일부를 DB에서 관리하는 메소드
     # input None, output None(video_info_list
     def db_manage_monthly_upload(self):
-        pass
+        #월간 테이블 존재 여부 확인 - 원래 계획은 달 단위로 일단은 한 테이블에 적재하는 것으로....
+        video_info_list=self.video_info_list
+
+        try:
+            # DB connect
+            conn = sqlite3.connect('crawler.db')
+            cur = conn.cursor()
+            print("DB connect...")
+
+            # 테이블에 존재하는 video_id 한번에 받아옴
+            cur.execute("SELECT video_id from monthly_update_videos;")
+            db_list = cur.fetchall()
+            db_video_id_list = []
+            for element in list(map(list, db_list)):  # 튜플의 리스트 -> 리스트로
+                db_video_id_list.append(element[0])
+            print("GET monthly_upload_video ...")
+            print(db_video_id_list)
+            # 개별 video에 대해 반복 조회 -> 삽입 업데이트 분기
+            for video_info in video_info_list:
+                # 개별 video의 영상 정보 매핑
+                video_id = video_info[0]  # 조회를 위한 video_id : KEY
+                views = int(video_info[5])  # 조회수
+                likes = int(video_info[6])  # 영상 좋아요 수
+                comments = int(video_info[7]) # 영상 댓글 수
+                upload = video_info[3].split("T")[0] # 영상 업로드 시간
+                print(video_id,views,likes,comments,upload)
+                
+                if video_id in db_video_id_list:
+                    # update - 채널 id 불변
+                    
+                    cur.execute(f'''
+                    update monthly_update_videos set 
+                    views = "{views}",
+                    likes = "{likes}",
+                    comments = "{comments}",
+                    upload = "{upload}"
+                    where video_id = "{video_id}";
+                    ''')
+                    print(video_id, "is updated")
+
+                else:
+                    print("pass")
+                    # insert - 모두 새로 삽입
+                    cur.execute(f'''
+                    insert into monthly_update_videos values("{video_id}","{views}","{likes}","{comments}","{upload}");
+                    ''')
+                    print(video_id, "is inserted")
+            
+            conn.commit()
+            conn.close()
+            print("done")
+
+        except:
+            conn.commit()
+            conn.close()
+            print("error")
 
 
     
@@ -203,32 +352,44 @@ class Youtube_Crawler(object):
         self.channel_id = self.verify_channel_id(self.channel_id)
         print('got channel id : ',self.channel_id)
 
-        ## channel info get sequence
+        ## channel info get sequence - 채널 정보를 받아오는 시퀀스
         channel_URL = self.create_channel_URL(self.channel_id)
         channel_json = self.request_channel_URL(channel_URL)
         self.parse_channel_json(channel_json)
         print("channel info :",self.channel_info_list)
 
-        # channel activity get sequence
+        # channel activity get sequence - 채널의 최근 업로드 비디오 100개를 받아오는 시퀀스
         activity_URL = self.create_activity_URL(self.channel_id)
         activity_response, next_page_token =self.request_activity_URL(activity_URL)
         self.parse_activity_json(activity_response)
+        earlier_video_pub_time = activity_response.json()['items'][-1]['snippet']['publishedAt'] #마지막 인덱스의 업로드시간 값 접근
         print("next page: ",next_page_token)
-        while True:
-            
-            if (next_page_token!=None) and (len(self.videos_id_list)<=101) :
-                print("next page requesting...")
-                print("next page :", next_page_token)
-                print("next URL : ",activity_URL)
-                temp = activity_URL + "&pageToken=" + next_page_token
-                print(temp)
-                activity_response, next_page_token =self.request_activity_URL(activity_URL + "&pageToken=" + next_page_token)
-                self.parse_activity_json(activity_response)
 
-            else:
-                print("page end!")
-                break
-        
+        if next_page_token is not None: # 첫 페이지에서 끝나지는 않은지 검사
+            while True:#이후 페이지가 있을 경우publishedBefore=2020-12-01T00:00:00Z
+                print("video_id_list got :",len(self.videos_id_list))
+                print("next page requesting...")
+                temp = activity_URL  + "&publishedBefore=" + earlier_video_pub_time.split("+")[0]+"Z"
+                print(temp)
+                 
+                activity_response, next_page_token =self.request_activity_URL(activity_URL + "&publishedBefore=" + earlier_video_pub_time.split("+")[0]+"Z")
+                
+                #컨텐츠 마지막 시간검사
+                if len(activity_response.json()['items']) != 0: 
+                    print(len(activity_response.json()['items']))
+                    earlier_video_pub_time = activity_response.json()['items'][-1]['snippet']['publishedAt']
+
+                self.parse_activity_json(activity_response)
+                print("video_id_list got :",len(self.videos_id_list))
+                if (next_page_token==None) or (len(list(set(self.videos_id_list)))>100) :
+                    print("page end or videos over 100")
+                    break
+        else:
+            print("requested page has a few videos. under",self._max_result)
+
+        ## video 최근순으로 100개로 줄임
+        self.videos_id_list = self.videos_id_list[0:100]
+        print("video_id_list got :",len(list(set(self.videos_id_list))))
 
         ## video info get sequence - done
         for i in range(0,len(self.videos_id_list),self._max_result): ## 멕스 리절트 인자만큼 아이디 쿼리 날림
@@ -236,10 +397,12 @@ class Youtube_Crawler(object):
             video_json = self.request_video_URL(video_URL) #URL request
             self.parse_videos_json(video_json) # 해당하는 갯수만큼 json 발라냄
             
-        for video_info in self.video_info_list:
-            print(video_info)
+        print("the NUMBER of video IS",len(self.video_info_list))
         
         ## DB managing
+        self.db_manage_channel_info()
+        self.db_manage_channel_upload()
+        self.db_manage_monthly_upload()
 
         
 

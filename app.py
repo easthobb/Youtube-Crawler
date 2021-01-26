@@ -25,7 +25,7 @@ app = flask.Flask(__name__)
 # use this code in your application please replace this with a truly secret
 # key. See http://flask.pocoo.org/docs/0.12/quickstart/#sessions.
 
-## 유튜브 예제 함수-
+## 유튜브 예제 함수
 def channels_list_by_username(client, **kwargs):
   response = client.channels().list(
     **kwargs
@@ -41,6 +41,9 @@ def get_secret():
     return client_secret
 
 app.secret_key = get_secret()
+
+@app.route('/home')
+
 
 
 @app.route('/')
@@ -118,7 +121,8 @@ def oauth2callback():
 def crawling():
   URL = request.form['url']
   print(URL)
-
+  print(flask.session['credentials'])
+  return flask.redirect(flask.url_for('index'))
 
 if __name__ == '__main__':
   # When running locally, disable OAuthlib's HTTPs verification. When
