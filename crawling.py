@@ -13,7 +13,7 @@ class Youtube_Crawler(object):
         self.BASE_URL = "https://youtube.googleapis.com/youtube/v3/"
 
         # Attributes of Crawler
-        self.token = "" # temp API key
+        self._token = "" # temp API key
         self.channel_name = ""
         self.channel_id = channel_id  # input parameter
         self._max_result = 50  # temp
@@ -35,14 +35,22 @@ class Youtube_Crawler(object):
     @max_result.setter
     def max_result(self, value):
         self._max_result = value
-    @pro
+        
+    @property
+    def token(self):
+        return self._token
+    
+    @token.setter
+    def token(self,value):
+        self._token = value
+
 
     # 클래스에서 입력받은 채널 id의 유효성 검사
     # input channel_name, return channel_id or -1
     def verify_channel_id(self,channel_id):
         
         print("verify channel name...", channel_id)
-        query = self.BASE_URL + f"channels?part=snippet&id={channel_id}&fields=items(id)&key={self.token}"
+        query = self.BASE_URL + f"channels?part=snippet&id={channel_id}&fields=items(id)&access_token={self._token}"
         verify = requests.get(query)
         try:
             print(verify.json())
@@ -62,7 +70,7 @@ class Youtube_Crawler(object):
         print("creating channel info request URL ...")
         URL = self.BASE_URL + f"channels?part=snippet,contentDetails,statistics&id={channel_id}"
         URL = URL + f"&fields=items(id,snippet.title,snippet.description,statistics.subscriberCount)"
-        URL = URL + f"&key={self.token}"
+        URL = URL + f"&access_token={self._token}"
         print(URL) # for debug
         return URL
 
@@ -103,7 +111,7 @@ class Youtube_Crawler(object):
         print("creating activity info request URL...")
         URL = self.BASE_URL + f"activities?part=snippet,contentDetails&channelId={channel_id}"
         URL = URL + f"&maxResults={self._max_result}"
-        URL = URL + f"&key={self.token}"
+        URL = URL + f"&access_token={self._token}"
         print(URL)
         return URL
 
@@ -145,7 +153,7 @@ class Youtube_Crawler(object):
         #max list = 50 
         URL = self.BASE_URL +f"videos?part=snippet,contentDetails,statistics&id="
         URL = URL + ",".join(videos_id_list)
-        URL = URL + f"&key={self.token}"
+        URL = URL + f"&access_token={self._token}"
 
         return URL
 

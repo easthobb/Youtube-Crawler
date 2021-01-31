@@ -3,11 +3,13 @@ import flask
 from flask import Flask, render_template,request,send_from_directory,abort
 import json
 import os
-#import requests_oauthlib
-
+import requests
+import requests_oauthlib
 import google.oauth2.credentials
 import google_auth_oauthlib.flow
 import googleapiclient.discovery
+
+import crawling
 
 # The CLIENT_SECRETS_FILE variable specifies the name of a file that contains
 # the OAuth 2.0 information for this application, including its client_id and
@@ -23,15 +25,8 @@ API_VERSION = 'v3'
 app = flask.Flask(__name__)
 # Note: A secret key is included in the sample so that it works, but if you
 # use this code in your application please replace this with a truly secret
-# key. See http://flask.pocoo.org/docs/0.12/quickstart/#sessions.
+# key. See http://flask.pocoo.org/docs/0.12/quickstart/#sessions
 
-## 유튜브 예제 함수
-def channels_list_by_username(client, **kwargs):
-  response = client.channels().list(
-    **kwargs
-  ).execute()
-
-  return flask.jsonify(**response)
 
 ## secret key 게터
 def get_secret():
@@ -41,10 +36,6 @@ def get_secret():
     return client_secret
 
 app.secret_key = get_secret()
-
-@app.route('/home')
-
-
 
 @app.route('/')
 def index():
@@ -61,7 +52,6 @@ def index():
   print(client)
   print(flask.session['credentials'])
   return render_template('index.html')
-  #channels_list_by_username(client,part='snippet,contentDetails,statistics',forUsername='GoogleDevelopers')
 
 
 @app.route('/authorize')
@@ -115,14 +105,40 @@ def oauth2callback():
 
   return flask.redirect(flask.url_for('index'))
 
+  
+@app.route('/refresh')
+def refresh():
 
+  print("got refresh request...")
+  client_id = flask.session['credentials']['client_id']
+  client_secret = flask.session['credentials']['client_secret']
+  refresh_token = flask.session['credentials']['refresh_token']
+  refresh_query = f"https://accounts.google.com/o/oauth2/token?client_id={client_id}&client_secret={client_secret}&refresh_token={refresh_token}&grant_type=refresh_token"
+  print(refresh_query)
+  res = requests.post(refresh_query)
+  print("REFRESHED TOKEN : " ,res.json())
+  print("NEW ACCESS TOKEN : ",res.json()['access_token'])
+  new_access_token = res.json()['access_token']
 
-@app.route('/youtube-crawling',methods=['POST'])
-def crawling():
+  flask.session['credentials']['token'] = new_access_token
+
+  return flask.redirect(flask.url_for('index'))
+
+@app.route('/youtube-crawl',methods=['POST'])
+def crawl():
+  
   URL = request.form['url']
+  
   print(URL)
   print(flask.session['credentials'])
-  return flask.redirect(flask.url_for('index'))
+
+  ## START CRAWLING
+  crawler = crawling.Youtube_Crawler(URL)
+  crawler.token = flask.session['credentials']['token']
+  crawler.start()
+  return '''
+  success
+  '''
 
 if __name__ == '__main__':
   # When running locally, disable OAuthlib's HTTPs verification. When
